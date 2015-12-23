@@ -3,9 +3,7 @@
 
 
 // setup vars
-var p1,p2,p3, motionPoints;
-var currentTri, triCount = 0, triangles = [];
-var noMotion;
+var v1,v2,v3, t1, motion1, startPoints = [], currentTri, triCount = 0, triangles = [], motionPoint = 0;
 
 // get size of window vars
 function getWindowProps(){
@@ -42,18 +40,19 @@ function setup() {
   // audio in 
   soundIn.start();
   fft.setInput(soundIn);
-  fft.smooth(0.4); 
-  noMotion = createVector(0,0); 
-  p1 = p1 || new MotionPoint(createVector(width/2, height/2 + 30), createVector(0.5,0.5));
-  p2 = p2 || new MotionPoint(createVector(width/2 - 30, height/2 - 30), noMotion);
-  p3 = p3 || new MotionPoint(createVector(width/2 + 30, height/2 - 30), noMotion);
+  fft.smooth(0.4);  
 
-  motionPoints = [p1, p2, p3]
-  
-  t1 = new Tri(motionPoints);
+  v1 = v1 || createVector(width/2, height/2 + 30);
+  v2 = v2 || createVector(width/2 - 30, height/2 - 30);
+  v3 = v3 || createVector(width/2 + 30, height/2 - 30);
+  motion1 = motion1 || createVector(0.5,0.5);
+  startPoints = [v1, v2, v3];
+  t1 = new Tri(startPoints, motion1);
+  currentTri = t1;
 }
 
 // animation loop
+
 function draw() {
   // colors
     // background('transparent')
@@ -62,68 +61,75 @@ function draw() {
 
   //audio in
   fft.analyze();
-  // freqUpdate('bass', 230, blender);
-  // freqUpdate('treble', 100, changeDir, motion1);
-  // freqUpdate('highMid', 140, blender);
+  freqUpdate('bass', 230, blender);
+  freqUpdate('treble', 100, changeDir, motion1);
+  freqUpdate('highMid', 140, blender);
+
 
   // animate
-  t1.increment();
+  currentTri.increment(motion1);
+  
 }
 
-// motion points (takes vectors as arguments)
-function MotionPoint(point, motion, acceleration){
-  this.point = point;
-  this.motion = motion;
-  this.acceleration = acceleration;
+// controls
+
+
+
+// mouse
+function mouseClicked(){
+    changeDir(motion1);
 }
 
-// add motion to point (without passing outside of canvas)
-// takes simple vector as input
-function addMotion(point, motion, acceleration){
-  var acc = acceleration || 1;
-  var m = motion;
-  var pt = point.add(motion);
-   if(pt.x > width || pt.x < 0 || pt.y > height || pt.y < 0){
-    m = m.rotate(180);
-   }
-   return pt.add(m).mult(acc);
+var looping = true;
+function keyTyped() {
+    console.log(key);
+    // loop ctrl
+    if (key == ' '){
+        if (looping) {
+            noLoop();
+            looping = false;
+        } else {
+            loop();
+            looping = true;
+        }
+    }
+    // blend ctrl
+    if (key == '1') {
+      blender();
+    }
+    if (key == '2') {
+      
+    }
+    if (key == '3') {
+      
+    }
+    if (key == '4') {
+      
+    }
 }
 
 // shapes
-// base triangle
-function Tri(motionPoints){
-  this.mPts = motionPoints;
-}
 
-Tri.prototype.increment = function(){
-  var p = [];
-  for (var i = 0, l = this.mPts.length; i < l; i++){
-    var location = addMotion(this.mPts[i].point, this.mPts[i].motion, this.mPts[i].acceleration);
-    p.push(location)
-  }
-  triangle(p[0].x, p[0].y, p[1].x, p[1].y, p[2].x, p[2].y);
-};
+function Tri(startPoints, motion){
+    this.points = startPoints;
+    this.motionPoint = whichPoint();
 
-Tri.prototype.changeMotion = function(newMotion){
-  var notMoving = staticPoints(this.mPts);
-  for (var i = 0, l = this.mPts.length; i < l; i++){
-    this.mPts[i].motion = noMotion;
-  }
-  this.mPts[Math.floor(random(0,notMoving.length))].motion = newMotion;
-}
 
-// utility functions
-// which points aren't moving (takes array of MotionPoints, returns keys)
-function staticPoints(input){
-  var notMoving = [];
-  for (var i = 0, l = input.length; i < l; i++){
-    if (input[i].motion.equals(noMotion)) {
-      notMoving.push[i];
+    function newPoint(point, motion){
+      var m = motion;
+      var pt = point.add(motion);
+       if(pt.x > width || pt.x < 0 || pt.y > height || pt.y < 0){
+        m = m.rotate(180);
+       }
+       return pt.add(m);
     }
-  }
-  console.log(notMoving);
-  return notMoving;
 }
+
+Tri.prototype.increment = function(motion){
+        var p = this.points;
+        p[this.motionPoint]  = newPoint(p[this.motionPoint], motion);
+        triangle(p[0].x, p[0].y, p[1].x, p[1].y, p[2].x, p[2].y);
+    };
 
 
 
@@ -158,7 +164,14 @@ function FromMid(startPoints, motion){
 }
 
 var centerlocked = false;
-
+function whichPoint(current){
+    var p = Math.floor(random(0,3));
+    if(p === current){
+        return whichPoint();
+    } else {
+        return p;
+    }
+}
 
 // change direction (new Tri)
 function changeDir(motion){
@@ -216,42 +229,6 @@ function freqUpdate(frequency, threshhold, callback, args){
   if( energy > threshhold ){
     callback(args);
   }
-}
-
-
-// user controls
-// mouse
-function mouseClicked(){
-    var newMotion = p5.Vector.random2D();
-    t1.changeMotion(newMotion);
-}
-
-var looping = true;
-function keyTyped() {
-    console.log(key);
-    // loop ctrl
-    if (key == ' '){
-        if (looping) {
-            noLoop();
-            looping = false;
-        } else {
-            loop();
-            looping = true;
-        }
-    }
-    // blend ctrl
-    if (key == '1') {
-      blender();
-    }
-    if (key == '2') {
-      
-    }
-    if (key == '3') {
-      
-    }
-    if (key == '4') {
-      
-    }
 }
 
 
