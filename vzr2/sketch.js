@@ -66,7 +66,7 @@ function setup() {
   };
 
   
-  currentColors = colorProfiles.grayscale;
+  currentColors = colorProfiles.sunset;
 
 
   // audio in 
