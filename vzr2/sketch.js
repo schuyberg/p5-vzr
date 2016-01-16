@@ -12,8 +12,8 @@ var noMotion;
 var globalSensitivity = 50;
 var currentShapes = [];
 var globalAcceleration = 0.9975;
-
-var currentColors;
+var amplitude;
+var currentColors, colorProfiles;
 
 // get size of window vars
 function getWindowProps(){
@@ -55,6 +55,10 @@ function setup() {
       fill: color(255,100,40,2),
       stroke: color(10,20,45) 
     },
+    ice:{
+      fill: color(255,255,255,1),
+      stroke: color(87,156,255,120)
+    },
     whitestroke:{
       fill: color(0,0,0),
       stroke: color(255,255,255)
@@ -62,9 +66,33 @@ function setup() {
     grayscale:{
       fill: color(0,0,0,20),
       stroke: color(255,255,255, 120)
-    }
-  };
+    },
+    colors4:{
+      fill: color(98,253,27, 3),
+      stroke: color(122,107,243,60)
+    },
+    // color5:{
+    //   fill: color(0,10,90,20),
+    //   stroke: color(90,6,2, 120)
+    // },
+    // color6:{
+    //   fill: color(161,61,0,5),
+    //   stroke: color(227,201,0, 40)
+    // },
+    redclouds:{
+      fill: color(82,37,0,2),
+      stroke: color(32,115,4,3)
+    },
+    greenlines:{
+      fill: color(82,37,0,2),
+      stroke: color(32,115,4,60)
+    },
+    darkness:{
+      fill: color(0,0,0,10),
+      stroke: color(255,255,255,10)
+    },
 
+  };
   
   currentColors = colorProfiles.sunset;
 
@@ -72,10 +100,13 @@ function setup() {
   // audio in 
   soundIn.start();
   fft.setInput(soundIn);
+  amplitude = new p5.Amplitude();
+  amplitude.setInput(soundIn);
+
 
   fft.smooth(0.4); 
   noMotion = createVector(0,0); 
-  p1 = p1 || new MotionPoint(createVector(width/2, height/2 + 30), p5.Vector.random2D());
+  p1 = p1 || new MotionPoint(createVector(width/2, height/2 + 30), noMotion);
   p2 = p2 || new MotionPoint(createVector(width/2 - 30, height/2 - 30), noMotion);
   p3 = p3 || new MotionPoint(createVector(width/2 + 30, height/2 - 30), noMotion);
 
@@ -83,6 +114,7 @@ function setup() {
   
   t1 = new Tri(motionPoints);
   currentShapes.push(t1);
+
 }
 
 ////////////////////
@@ -93,15 +125,22 @@ function draw() {
   // colors
   // background('transparent')
   // fill(255,100,40,2);
-  // stroke(10,20,60);  
+  // stroke(10,20,60); 
   fill(currentColors.fill);
   stroke(currentColors.stroke);
   //audio in
   fft.analyze();
   // activate frequency-based triggers
   freqUpdate();
+
   // animate
   increment();
+
+  // change global accel on amplitude
+  // globalAcceleration = map(amplitude.getLevel(), 0, 0.5, 0.996, 1.001);
+  // console.log('amp', amplitude.getLevel(), globalAcceleration);
+  // console.log('amp', amplitude.getLevel(), globalAcceleration);
+
 }
 
 // increment current shapes
@@ -110,6 +149,9 @@ function increment(){
     shape.increment();
   });
 }
+
+
+
 
 ////////////////////
 // Blending & Colors
@@ -142,9 +184,12 @@ function blender(input){
 }
 
 // color profiles
-var colors = {
-
-};
+function nextColorProfile(){
+  var pKeys = Object.keys(colorProfiles);
+  var next = pKeys.indexOf(currentColors)+1;
+  if(next > pKeys.length) { next = 0; }
+  currentColors = colorProfiles[pKeys[next]];
+}
 
 
 // color / blend actions
@@ -284,39 +329,61 @@ function freqUpdate(){
 }
 
 // TRIGGERS
-var bass1 = new FreqTrigger('bass1', 'bass', 180, function(energy){
-  console.log('bass1', energy)
+var bass1 = new FreqTrigger('bass1', 'bass', 160, function(energy){
+  console.log('bass1', energy);
   blender();
+
   if (freqTriggers.bass1.hasOwnProperty('counter1')){
     freqTriggers.bass1.counter1++;
   } else {
     freqTriggers.bass1.counter1 = 0;
   }
-  if (freqTriggers.bass1.counter1 > 20){
+  if (freqTriggers.bass1.counter1 % 6 === 0){
     // var diff = 255 - freqTriggers.bass.thresh;
     // var speed = map(energy, 0, diff, -1,1.5);
-    var newMotion = p5.Vector.random2D();
+    var multiplier = map(energy, 160, 255, 0.8, 1.5);
+    var newMotion = p5.Vector.random2D().mult(multiplier);
     currentShapes[0].changeMotion(motions.multipoint, newMotion);
+  }
+  if (freqTriggers.bass1.counter1 % 600 === 0){
+      clear();
+      wipeCanvas(0);
   }
 });
 var treb1 = new FreqTrigger('treble', 'treble', 120, function(energy){
-  // console.log('motion2');
+  console.log('treb1', energy);
   if (freqTriggers.treble.hasOwnProperty('counter1')){
     freqTriggers.treble.counter1++;
   } else {
     freqTriggers.treble.counter1 = 0;
   }
   
-  if (freqTriggers.treble.counter1 > 5 ){
+  if (freqTriggers.treble.counter1 % 5 === 0 ){
     // var diff = 255 - freqTriggers.bass.thresh;
     // var speed = map(energy, 0, diff, -1,1.5);
-    var newMotion = p5.Vector.random2D();
+    // var newMotion = p5.Vector.random2D();
+    var multiplier = map(energy, 120, 255, 1, 2);
+    var newMotion = p5.Vector.random2D().mult(multiplier);
     currentShapes[0].changeMotion(motions.singlePoint, newMotion);
+  }
+  if (freqTriggers.treble.counter1 % 5 === 0 ){
+    blender();
   }
 });
 var hm1 = new FreqTrigger('highMid', 'highMid', 120, function(energy){
-    var newMotion = p5.Vector.random2D();
+  console.log('highMid', energy);
+    var multiplier = map(energy, 120, 255, 1, 2);
+    var newMotion = p5.Vector.random2D().mult(multiplier);
+    // var newMotion = p5.Vector.random2D();
     currentShapes[0].changeMotion(motions.centerLocked, newMotion);
+    if (freqTriggers.highMid.hasOwnProperty('counter1')){
+      freqTriggers.highMid.counter1++;
+    } else {
+      freqTriggers.highMid.counter1 = 0;
+    }
+    if (freqTriggers.highMid.counter1 % 20 === 0){
+      currentColors = colorProfiles[pickRandomProperty(colorProfiles)];
+    }
 });
 
 
@@ -355,23 +422,12 @@ function keyTyped() {
     if (key == 'e') {
       wipeCanvas(255);
     }
-    if (key == '1') {
-      currentColors=colorProfiles.sunset;
+    if (key == 'c') {
+      clear();
+      wipeCanvas(0);
     }
-    if (key == '2') {
-      currentColors=colorProfiles.whitestroke;
-    }
-    if (key == '3') {
-      currentColors=colorProfiles.grayscale;
-    }
-    if (key == '4') {
-      // currentColors=colorProfiles.
-    }
-    if (key == '5') {
-      // currentColors=colorProfiles.
-    }
-    if (key == '6') {
-      // currentColors=colorProfiles.
+    if (key == '0') {
+      nextColorProfile();
     }
     // global input sensitivity
     if (key == '=') {
@@ -379,6 +435,16 @@ function keyTyped() {
     }
     if (key == '-') {
       globalSensitivity--;
+    }
+    if(key == 'f'){
+      var fs = fullScreen();
+      fullScreen(!fs);
+    }
+    if(key.match(/[1-9]/)) {
+      var pKeys = Object.keys(colorProfiles);
+      if(colorProfiles[pKeys[key-1]]){
+        currentColors=colorProfiles[pKeys[key-1]];
+      }
     }
 
 }
